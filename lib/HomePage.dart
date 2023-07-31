@@ -1,11 +1,6 @@
 import 'dart:io';
-import 'dart:js_interop';
-
 import 'package:flutter/material.dart';
-import 'package:percent_indicator/circular_percent_indicator.dart';
-import 'package:percent_indicator/linear_percent_indicator.dart';
 import 'package:pie_chart/pie_chart.dart';
-import 'package:todo_app/widgets/drawer.dart';
 import 'package:todo_app/widgets/todoContainer.dart';
 import 'package:toggle_switch/toggle_switch.dart';
 import 'api.dart';
@@ -13,16 +8,13 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'models/ToDo.dart';
 
-TextEditingController titleTextEditingController = TextEditingController();
-TextEditingController descTextEditingController = TextEditingController();
-// late String changeableTitle;
-// late String changeableDesc;
-// late bool changeableToggle;
+TextEditingController titleTextEditingController= TextEditingController();
+TextEditingController descTextEditingController= TextEditingController();
+bool changeableToggle= true;
 const Color lightcolor=Color(0xffF2D3D1);
 const Color deepcolor=Color(0xffBE7878);
  bool isloading= false;
  int done= 0;
- int incomplete=0;
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -36,6 +28,7 @@ class _HomePageState extends State<HomePage> {
 List<ToDo> myToDo= [];
 Future<void> fetchData()async{
   try {
+    done=0;
     http.Response response= await http.get(Uri.parse(api));
     var data= response.body.toString();
     var finaldata =await json.decode(data);
@@ -65,38 +58,27 @@ Future<void> fetchData()async{
   print(myToDo);
 }
 
-Future<Map<String, dynamic>> addPost(Map jsonMap)async{
-    HttpClient httpClient = new HttpClient();
-    HttpClientRequest request = await httpClient.postUrl(Uri.parse(api));
-    request.headers.set('content-type', 'application/json');
-    request.add(utf8.encode(json.encode(jsonMap)));
-    HttpClientResponse response = await request.close();
-    String reply = await response.transform(utf8.decoder).join();
-    print(reply);
-     httpClient.close();
-     Map<String, dynamic>map = json.decode(reply);
-     return map;
-    // http.Response response= await http.post(
-    //   Uri.parse(api),
-    //   headers: <String, String>{
-    //     'Content-Type':'application/json; charset= UTF-8',
-    //   },
-    //   body: jsonEncode(<String, dynamic>{
-    //     'title': title,
-    //     'desc': desc,
-    //     'isDone': false,
-    //   })
-    //  );
-    //  if (response.statusCode == '201'){
-    //   setState(() {
-    //     myToDo.clear();
-    //     fetchData();
-    //   });
-    //  } else{
-    //   print('something went wrong');
-    //  }
-     
- 
+Future<void> addPost(String title,String desc, bool isDone) async {
+   try {
+      final jsonMap = jsonEncode({
+          'title': title,
+          'desc':desc,
+          'isDone':isDone,
+      });
+      print(jsonMap);
+      final response = await http.post(
+        Uri.parse(api),
+        headers: {
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+        body:jsonMap);
+       final responseData = json.decode(response.body);
+       print(responseData);
+        myToDo.clear();
+        fetchData();
+   }catch (e) {
+     print('problem is $e');
+   }
 }
 
   void delete_ToDo(String id)async{
@@ -149,9 +131,7 @@ Future<Map<String, dynamic>> addPost(Map jsonMap)async{
                      style: TextStyle(color: Colors.white, fontSize: 22),),
                      TextField(
                       controller: titleTextEditingController,
-                      onChanged: (value) {
-                        // changeableTitle= value;
-                      },
+                    
                        decoration: InputDecoration(
                         hintText: 'Title',
                         hintStyle: TextStyle(color: Colors.white54),
@@ -164,9 +144,7 @@ Future<Map<String, dynamic>> addPost(Map jsonMap)async{
                      style: TextStyle(color: Colors.white, fontSize: 22),),
                      TextField(
                       controller: descTextEditingController,
-                      onChanged: (value) {
-                        // changeableDesc= value;
-                      },
+                    
                        decoration: InputDecoration(
                         hintText: 'Describtion',
                         hintStyle: TextStyle(color: Colors.white54),
@@ -178,7 +156,7 @@ Future<Map<String, dynamic>> addPost(Map jsonMap)async{
                        padding: const EdgeInsets.symmetric(vertical: 20),
                        child: ToggleSwitch(
                         minWidth: 100.0,
-                        initialLabelIndex: 1,
+                        initialLabelIndex: 0,
                         cornerRadius: 20.0,
                         activeFgColor: Colors.black,
                         inactiveBgColor: Colors.white,
@@ -187,15 +165,15 @@ Future<Map<String, dynamic>> addPost(Map jsonMap)async{
                         labels: ['complete', 'incomplete'],
                         activeBgColors: [[deepcolor], [deepcolor]],
                         onToggle: (index) {
-                          // if (index == '0') {
-                          //   changeableToggle= true;
-                          // }else if(index == '1'){
-                          //   changeableToggle= false;
-                          // }
+                          if (index == 0) {
+                            changeableToggle= true;
+                          }else if(index == 1){
+                            changeableToggle= false;
+                          }
                           
                           print('switched to: $index');
                        },
-                                         ),
+                       ),
                      ),
                      Padding(
                        padding: const EdgeInsets.symmetric(vertical: 10),
@@ -210,16 +188,7 @@ Future<Map<String, dynamic>> addPost(Map jsonMap)async{
                             foregroundColor: deepcolor
                             ),
                               onPressed: (){
-                            
-                                final Map<String, dynamic> postMap={
-                                  "title": titleTextEditingController.text,
-                                  "desc": descTextEditingController.text,
-                                  "isone": false,
-                                };
-                                // print(changeableTitle);
-                                // print(changeableDesc);
-                                // print(changeableToggle);
-                                addPost(postMap);               
+                                addPost(titleTextEditingController.text, descTextEditingController.text, changeableToggle);               
                             }, 
                             child: 
                             Icon(Icons.done)),
@@ -287,6 +256,7 @@ Future<Map<String, dynamic>> addPost(Map jsonMap)async{
       appBar: AppBar(
         title: const Text('ToDo', style: TextStyle(color: Colors.white),),
         backgroundColor: deepcolor,
+          iconTheme: IconThemeData(color: lightcolor),
       ),
       body: isloading?
       Center(
